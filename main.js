@@ -1,13 +1,12 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87ceeb);
 scene.fog = new THREE.Fog(0x87ceeb, 100, 500);
 
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
@@ -15,58 +14,71 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.getElementById('container').appendChild(renderer.domElement);
 
-let orbitControls = new OrbitControls(camera, renderer.domElement);
+const orbitControls = new OrbitControls(camera, renderer.domElement);
 orbitControls.enableDamping = true;
-orbitControls.dampingFactor = 0.05;
-orbitControls.maxPolarAngle = Math.PI / 2.1;
-orbitControls.minDistance = 2;
-orbitControls.maxDistance = 150;
+orbitControls.dampingFactor = 0.08;
+orbitControls.maxPolarAngle = Math.PI / 1.95;
+orbitControls.minDistance = 0;
+orbitControls.maxDistance = Infinity;
 
-let pointerControls = null;
-let isRoaming = false;
-
-const lighting = setupLighting();
 const modelLayers = { buildings: [], roads: [], vegetation: [] };
 const interactiveObjects = [];
 const buildingInfoMap = new Map();
+
 let selectedObject = null;
 let autoRotate = false;
 let glbModel = null;
 
 const viewPositions = {
-    perspective: { pos: new THREE.Vector3(20, 15, 20), target: new THREE.Vector3(0, 5, 0) },
-    top: { pos: new THREE.Vector3(0, 40, 0), target: new THREE.Vector3(0, 0, 0) },
-    side: { pos: new THREE.Vector3(30, 8, 0), target: new THREE.Vector3(0, 5, 0) }
+    perspective: { pos: new THREE.Vector3(50, 40, 50), target: new THREE.Vector3(0, 0, 0) },
+    top: { pos: new THREE.Vector3(0, 100, 0), target: new THREE.Vector3(0, 0, 0) },
+    side: { pos: new THREE.Vector3(80, 15, 0), target: new THREE.Vector3(0, 5, 0) }
 };
 
 const keys = { w: false, a: false, s: false, d: false };
-const moveSpeed = 15;
+const moveSpeed = 5;
+
+function loadHDRSkybox() {
+    return new Promise((resolve) => {
+        const loader = new RGBELoader();
+        loader.load('skybox.hdr', (texture) => {
+            texture.mapping = THREE.EquirectangularReflectionMapping;
+            scene.background = texture;
+            scene.environment = texture;
+            console.log('HDR 天空盒加载成功');
+            resolve(texture);
+        }, undefined, (error) => {
+            console.warn('HDR 天空盒加载失败，使用默认背景:', error);
+            scene.background = new THREE.Color(0x87ceeb);
+            resolve(null);
+        });
+    });
+}
 
 function setupLighting() {
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
-    dirLight.position.set(30, 50, 30);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    dirLight.position.set(50, 80, 50);
     dirLight.castShadow = true;
     dirLight.shadow.mapSize.width = 2048;
     dirLight.shadow.mapSize.height = 2048;
     dirLight.shadow.camera.near = 0.5;
-    dirLight.shadow.camera.far = 200;
-    dirLight.shadow.camera.left = -80;
-    dirLight.shadow.camera.right = 80;
-    dirLight.shadow.camera.top = 80;
-    dirLight.shadow.camera.bottom = -80;
+    dirLight.shadow.camera.far = 500;
+    dirLight.shadow.camera.left = -100;
+    dirLight.shadow.camera.right = 100;
+    dirLight.shadow.camera.top = 100;
+    dirLight.shadow.camera.bottom = -100;
     scene.add(dirLight);
 
-    const hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x3a7d44, 0.4);
+    const hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x3a7d44, 0.3);
     scene.add(hemiLight);
-
-    return { ambientLight, dirLight, hemiLight };
 }
 
-function classifyModelObject(child) {
-    const name = child.name.toLowerCase();
+function classifyObject(child) {
+    const name = (child.name || '').toLowerCase();
+
     if (name.includes('building') || name.includes('建筑') || name.includes('楼') || name.includes('馆')) {
         return 'building';
     }
@@ -77,16 +89,12 @@ function classifyModelObject(child) {
         return 'vegetation';
     }
 
-    if (child.position) {
-        if (child.position.y > 2) return 'building';
-        if (child.position.y < 0.5) return 'road';
-    }
-
-    if (child.geometry) {
+    if (child.isMesh && child.geometry) {
         const box = new THREE.Box3().setFromObject(child);
         const height = box.max.y - box.min.y;
         if (height > 5) return 'building';
         if (height < 1) return 'road';
+        return 'vegetation';
     }
 
     return 'building';
@@ -103,7 +111,7 @@ function loadGLBModel() {
                     child.castShadow = true;
                     child.receiveShadow = true;
 
-                    const type = classifyModelObject(child);
+                    const type = classifyObject(child);
 
                     if (type === 'building') {
                         modelLayers.buildings.push(child);
@@ -123,45 +131,42 @@ function loadGLBModel() {
 
                     const info = child.name ? { name: child.name, desc: defaultInfo[type].desc } : defaultInfo[type];
                     buildingInfoMap.set(child.uuid, info);
-
                     child.userData = { type, ...info };
                 }
             });
+
+            scene.add(glbModel);
 
             const box = new THREE.Box3().setFromObject(glbModel);
             const center = box.getCenter(new THREE.Vector3());
             const size = box.getSize(new THREE.Vector3());
 
-            console.log('GLB模型尺寸:', size);
-            console.log('GLB模型中心:', center);
+            console.log('GLB模型加载成功');
+            console.log('模型原始尺寸:', size);
+
+            glbModel.scale.setScalar(3);
+
+            const scaledBox = new THREE.Box3().setFromObject(glbModel);
+            const scaledSize = scaledBox.getSize(new THREE.Vector3());
 
             glbModel.position.set(-center.x, -box.min.y, -center.z);
 
-            scene.add(glbModel);
+            console.log('模型放大后尺寸:', scaledSize);
+            console.log('建筑:', modelLayers.buildings.length, '道路:', modelLayers.roads.length, '植被:', modelLayers.vegetation.length);
 
-            const maxDim = Math.max(size.x, size.y, size.z);
-            viewPositions.perspective.pos.set(maxDim * 0.6, maxDim * 0.4, maxDim * 0.6);
-            viewPositions.perspective.target.set(0, size.y * 0.4, 0);
-            viewPositions.top.pos.set(0, maxDim * 1.0, 0);
-            viewPositions.top.target.set(0, 0, 0);
-            viewPositions.side.pos.set(maxDim * 1.0, maxDim * 0.2, 0);
-            viewPositions.side.target.set(0, size.y * 0.4, 0);
+            const maxDim = Math.max(scaledSize.x, scaledSize.y, scaledSize.z);
+            if (maxDim > 0) {
+                viewPositions.perspective.pos.set(maxDim * 0.27, maxDim * 0.2, maxDim * 0.27);
+                viewPositions.perspective.target.set(0, scaledSize.y * 0.3, 0);
+                viewPositions.top.pos.set(0, maxDim * 0.4, 0);
+                viewPositions.top.target.set(0, 0, 0);
+                viewPositions.side.pos.set(maxDim * 0.4, maxDim * 0.07, 0);
+                viewPositions.side.target.set(0, scaledSize.y * 0.3, 0);
+            }
 
             camera.position.copy(viewPositions.perspective.pos);
             orbitControls.target.copy(viewPositions.perspective.target);
-
-            pointerControls = new PointerLockControls(camera, document.body);
-            pointerControls.addEventListener('unlock', () => {
-                isRoaming = false;
-                orbitControls.enabled = true;
-                document.getElementById('roamBtn').textContent = '第一人称漫游';
-                document.getElementById('roamHint').classList.add('hidden');
-            });
-
-            console.log('GLB模型加载成功');
-            console.log(`建筑: ${modelLayers.buildings.length} 个对象`);
-            console.log(`道路: ${modelLayers.roads.length} 个对象`);
-            console.log(`植被: ${modelLayers.vegetation.length} 个对象`);
+            orbitControls.update();
 
             resolve(glbModel);
         }, undefined, (error) => {
@@ -193,12 +198,10 @@ function animateCamera(targetPos, targetLookAt, duration = 1500) {
 }
 
 function switchView(viewName) {
-    if (isRoaming) return;
-
     const view = viewPositions[viewName];
     if (!view) return;
 
-    document.querySelectorAll('.view-controls button').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.btn-group button').forEach(btn => btn.classList.remove('active'));
     document.getElementById(viewName === 'perspective' ? 'perspectiveBtn' : viewName === 'top' ? 'topViewBtn' : 'sideViewBtn').classList.add('active');
 
     animateCamera(view.pos, view.target);
@@ -218,8 +221,6 @@ const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
 function onClick(event) {
-    if (isRoaming) return;
-
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
@@ -251,16 +252,11 @@ function onResize() {
 }
 
 function resetScene() {
-    if (isRoaming) {
-        pointerControls.unlock();
-        isRoaming = false;
-    }
     animateCamera(viewPositions.perspective.pos, viewPositions.perspective.target);
     hideInfoPanel();
     autoRotate = false;
     orbitControls.autoRotate = false;
-    document.getElementById('autoRotateBtn').textContent = '自动旋转';
-    document.querySelectorAll('.view-controls button').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.btn-group button').forEach(btn => btn.classList.remove('active'));
     document.getElementById('perspectiveBtn').classList.add('active');
 }
 
@@ -271,24 +267,7 @@ function toggleAutoRotate() {
     document.getElementById('autoRotateBtn').textContent = autoRotate ? '停止旋转' : '自动旋转';
 }
 
-function toggleRoam() {
-    if (isRoaming) {
-        pointerControls.unlock();
-    } else {
-        pointerControls.lock();
-        isRoaming = true;
-        orbitControls.enabled = false;
-        document.getElementById('roamBtn').textContent = '退出漫游';
-        document.getElementById('roamHint').classList.remove('hidden');
-        setTimeout(() => document.getElementById('roamHint').classList.add('hidden'), 3000);
-
-        camera.position.y = 3;
-    }
-}
-
-function handleRoamMovement(delta) {
-    if (!isRoaming) return;
-
+function handleKeyboardMovement(delta) {
     const direction = new THREE.Vector3();
     camera.getWorldDirection(direction);
     direction.y = 0;
@@ -298,15 +277,28 @@ function handleRoamMovement(delta) {
     right.crossVectors(direction, new THREE.Vector3(0, 1, 0)).normalize();
 
     const moveVector = new THREE.Vector3();
+    let isMoving = false;
 
-    if (keys.w) moveVector.add(direction.clone().multiplyScalar(moveSpeed * delta));
-    if (keys.s) moveVector.add(direction.clone().multiplyScalar(-moveSpeed * delta));
-    if (keys.a) moveVector.add(right.clone().multiplyScalar(-moveSpeed * delta));
-    if (keys.d) moveVector.add(right.clone().multiplyScalar(moveSpeed * delta));
+    if (keys.w) {
+        moveVector.add(direction.clone().multiplyScalar(moveSpeed * delta));
+        isMoving = true;
+    }
+    if (keys.s) {
+        moveVector.add(direction.clone().multiplyScalar(-moveSpeed * delta));
+        isMoving = true;
+    }
+    if (keys.a) {
+        moveVector.add(right.clone().multiplyScalar(-moveSpeed * delta));
+        isMoving = true;
+    }
+    if (keys.d) {
+        moveVector.add(right.clone().multiplyScalar(moveSpeed * delta));
+        isMoving = true;
+    }
 
-    if (moveVector.length() > 0) {
+    if (isMoving) {
         camera.position.add(moveVector);
-        camera.position.y = 3;
+        orbitControls.target.add(moveVector);
     }
 }
 
@@ -346,7 +338,6 @@ function setupEventListeners() {
     });
     document.getElementById('resetBtn').addEventListener('click', resetScene);
     document.getElementById('autoRotateBtn').addEventListener('click', toggleAutoRotate);
-    document.getElementById('roamBtn').addEventListener('click', toggleRoam);
     renderer.domElement.addEventListener('click', onClick);
     window.addEventListener('resize', onResize);
     window.addEventListener('keydown', onKeyDown);
@@ -358,25 +349,26 @@ const clock = new THREE.Clock();
 function animate() {
     requestAnimationFrame(animate);
 
-    const delta = clock.getDelta();
+    const delta = Math.min(clock.getDelta(), 0.05);
 
-    if (isRoaming) {
-        handleRoamMovement(delta);
-    } else {
-        orbitControls.update();
-    }
+    handleKeyboardMovement(delta);
+    orbitControls.update();
 
     renderer.render(scene, camera);
 }
 
 async function init() {
+    setupLighting();
     setupEventListeners();
+
+    await loadHDRSkybox();
 
     try {
         await loadGLBModel();
         console.log('数字孪生校园系统初始化完成');
     } catch (error) {
         console.error('场景初始化失败:', error);
+        alert('模型加载失败，请确保使用本地服务器运行');
     }
 
     const loadingEl = document.getElementById('loading');

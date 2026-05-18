@@ -9,32 +9,49 @@
 <body>
     <div id="container"></div>
 
-    <div class="control-panel">
-        <h3>数字孪生校园</h3>
-        <div class="view-controls">
-            <span>视角切换：</span>
-            <button id="perspectiveBtn" class="active">透视视角</button>
-            <button id="topViewBtn">鸟瞰视角</button>
-            <button id="sideViewBtn">侧面视角</button>
+    <div id="controlPanel" class="control-panel">
+        <div class="panel-header">
+            <h3>🏫 数字孪生校园</h3>
+            <p class="panel-subtitle">Digital Twin Campus</p>
         </div>
-        <div class="feature-controls">
-            <span>核心功能：</span>
-            <button id="introBtn">图文介绍</button>
-            <button id="resetBtn">重置场景</button>
-            <button id="autoRotateBtn">自动旋转</button>
-            <button id="roamBtn">第一人称漫游</button>
+        
+        <div class="panel-section">
+            <label class="section-label">视角切换</label>
+            <div class="btn-group">
+                <button id="perspectiveBtn" class="active">透视</button>
+                <button id="topViewBtn">鸟瞰</button>
+                <button id="sideViewBtn">侧面</button>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <label class="section-label">核心功能</label>
+            <div class="btn-group">
+                <button id="introBtn">图文介绍</button>
+                <button id="resetBtn">重置</button>
+                <button id="autoRotateBtn">自动旋转</button>
+            </div>
+        </div>
+
+        <div class="panel-hint">
+            <p>💡 WASD 移动 · 鼠标旋转视角</p>
         </div>
     </div>
 
     <div id="infoPanel" class="info-panel hidden">
-        <h4 id="infoTitle"></h4>
+        <div class="info-header">
+            <h4 id="infoTitle"></h4>
+            <button id="closeInfo" class="close-btn">×</button>
+        </div>
         <p id="infoDesc"></p>
-        <button id="closeInfo">关闭</button>
     </div>
 
     <div id="introModal" class="intro-modal hidden">
         <div class="intro-content">
-            <h2>校园数字孪生系统介绍</h2>
+            <div class="intro-header">
+                <h2>校园数字孪生系统</h2>
+                <button id="closeIntro" class="close-btn">×</button>
+            </div>
             <div class="intro-body">
                 <div class="intro-section">
                     <h3>项目概述</h3>
@@ -44,18 +61,17 @@
                     <h3>功能说明</h3>
                     <ul>
                         <li><strong>鼠标操作</strong>：左键旋转、右键平移、滚轮缩放</li>
+                        <li><strong>键盘移动</strong>：WASD键控制相机前后左右移动</li>
                         <li><strong>视角切换</strong>：支持透视、鸟瞰、侧面三种视角</li>
-                        <li><strong>图层管理</strong>：可独立切换建筑、道路、植被图层的显隐</li>
-                        <li><strong>对象交互</strong>：点击场景中的建筑对象可查看详细信息</li>
+                        <li><strong>对象交互</strong>：点击场景中的对象可查看详细信息</li>
                         <li><strong>自动旋转</strong>：开启后场景自动环绕旋转展示</li>
                     </ul>
                 </div>
                 <div class="intro-section">
                     <h3>技术栈</h3>
-                    <p>HTML5 / CSS3 / JavaScript / Three.js / GLTFLoader / OrbitControls</p>
+                    <p>HTML5 / CSS3 / JavaScript / Three.js / GLTFLoader</p>
                 </div>
             </div>
-            <button id="closeIntro">关闭</button>
         </div>
     </div>
 
@@ -64,11 +80,7 @@
         <p>正在加载校园场景...</p>
     </div>
 
-    <div id="roamHint" class="roam-hint hidden">
-        <p>🎮 WASD 移动 | 鼠标控制视角 | ESC 退出漫游</p>
-    </div>
-
-    <div class="footer">浙江树人学院数字孪生校园系统 | 期中作业</div>
+    <div id="footer" class="footer">浙江树人学院数字孪生校园系统 | 期中作业</div>
 
     <script type="importmap">
     {
