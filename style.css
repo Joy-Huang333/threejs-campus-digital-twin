@@ -1,0 +1,241 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Microsoft Yahei", sans-serif;
+}
+
+body {
+    overflow: hidden;
+    background-color: #f0f2f5;
+}
+
+/* 控制栏样式 */
+.control-panel {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 15px 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    z-index: 100;
+}
+
+.control-panel h3 {
+    margin-bottom: 12px;
+    font-size: 16px;
+    color: #333;
+}
+
+.view-controls, .layer-controls {
+    margin-bottom: 10px;
+}
+
+button {
+    padding: 6px 12px;
+    margin-right: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+button.active {
+    background: #1890ff;
+    color: #fff;
+    border-color: #1890ff;
+}
+
+button:hover {
+    border-color: #1890ff;
+}
+
+.layer-controls label {
+    margin-right: 10px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+/* 信息弹窗 */
+.info-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    z-index: 200;
+    width: 300px;
+}
+
+.info-panel.hidden {
+    display: none;
+}
+
+.info-panel h4 {
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.info-panel p {
+    margin-bottom: 15px;
+    color: #666;
+}
+
+#closeInfo {
+    background: #ff4d4f;
+    color: #fff;
+    border: none;
+}
+
+/* 底部信息 */
+.footer {
+    position: fixed;
+    bottom: 10px;
+    right: 20px;
+    font-size: 12px;
+    color: #666;
+}
+
+/* 加载提示 */
+#loading {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.95);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    transition: opacity 0.5s;
+}
+
+#loading.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #ddd;
+    border-top: 5px solid #1890ff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#loading p {
+    margin-top: 15px;
+    font-size: 16px;
+    color: #333;
+}
+
+/* 图文介绍弹窗 */
+.intro-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 300;
+}
+
+.intro-modal.hidden {
+    display: none;
+}
+
+.intro-content {
+    background: #fff;
+    padding: 30px;
+    border-radius: 12px;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+.intro-content h2 {
+    margin-bottom: 20px;
+    color: #1890ff;
+    text-align: center;
+}
+
+.intro-section {
+    margin-bottom: 20px;
+}
+
+.intro-section h3 {
+    margin-bottom: 10px;
+    color: #333;
+    border-bottom: 2px solid #1890ff;
+    padding-bottom: 5px;
+}
+
+.intro-section p, .intro-section ul {
+    color: #555;
+    line-height: 1.6;
+}
+
+.intro-section ul {
+    padding-left: 20px;
+}
+
+.intro-section li {
+    margin-bottom: 5px;
+}
+
+.intro-content button {
+    display: block;
+    margin: 0 auto;
+    padding: 10px 30px;
+    background: #1890ff;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.intro-content button:hover {
+    background: #40a9ff;
+}
+
+.feature-controls {
+    margin-top: 10px;
+}
+
+/* 漫游提示 */
+.roam-hint {
+    position: fixed;
+    bottom: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    z-index: 150;
+    pointer-events: none;
+    transition: opacity 0.3s;
+}
+
+.roam-hint.hidden {
+    opacity: 0;
+}

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数字孪生校园交互系统</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="container"></div>
+
+    <div class="control-panel">
+        <h3>数字孪生校园</h3>
+        <div class="view-controls">
+            <span>视角切换：</span>
+            <button id="perspectiveBtn" class="active">透视视角</button>
+            <button id="topViewBtn">鸟瞰视角</button>
+            <button id="sideViewBtn">侧面视角</button>
+        </div>
+        <div class="feature-controls">
+            <span>核心功能：</span>
+            <button id="introBtn">图文介绍</button>
+            <button id="resetBtn">重置场景</button>
+            <button id="autoRotateBtn">自动旋转</button>
+            <button id="roamBtn">第一人称漫游</button>
+        </div>
+    </div>
+
+    <div id="infoPanel" class="info-panel hidden">
+        <h4 id="infoTitle"></h4>
+        <p id="infoDesc"></p>
+        <button id="closeInfo">关闭</button>
+    </div>
+
+    <div id="introModal" class="intro-modal hidden">
+        <div class="intro-content">
+            <h2>校园数字孪生系统介绍</h2>
+            <div class="intro-body">
+                <div class="intro-section">
+                    <h3>项目概述</h3>
+                    <p>本系统基于Three.js构建的校园数字孪生交互平台，通过3D可视化技术展现校园空间布局。场景模型使用腾讯混元3D生成式AI工具生成，支持在浏览器中进行沉浸式浏览与交互。</p>
+                </div>
+                <div class="intro-section">
+                    <h3>功能说明</h3>
+                    <ul>
+                        <li><strong>鼠标操作</strong>：左键旋转、右键平移、滚轮缩放</li>
+                        <li><strong>视角切换</strong>：支持透视、鸟瞰、侧面三种视角</li>
+                        <li><strong>图层管理</strong>：可独立切换建筑、道路、植被图层的显隐</li>
+                        <li><strong>对象交互</strong>：点击场景中的建筑对象可查看详细信息</li>
+                        <li><strong>自动旋转</strong>：开启后场景自动环绕旋转展示</li>
+                    </ul>
+                </div>
+                <div class="intro-section">
+                    <h3>技术栈</h3>
+                    <p>HTML5 / CSS3 / JavaScript / Three.js / GLTFLoader / OrbitControls</p>
+                </div>
+            </div>
+            <button id="closeIntro">关闭</button>
+        </div>
+    </div>
+
+    <div id="loading">
+        <div class="spinner"></div>
+        <p>正在加载校园场景...</p>
+    </div>
+
+    <div id="roamHint" class="roam-hint hidden">
+        <p>🎮 WASD 移动 | 鼠标控制视角 | ESC 退出漫游</p>
+    </div>
+
+    <div class="footer">浙江树人学院数字孪生校园系统 | 期中作业</div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module" src="main.js"></script>
+</body>
+</html>
