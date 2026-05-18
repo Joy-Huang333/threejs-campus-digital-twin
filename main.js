@@ -29,6 +29,8 @@ let selectedObject = null;
 let autoRotate = false;
 let glbModel = null;
 
+let ambientLight, dirLight, hemiLight;
+
 const viewPositions = {
     perspective: { pos: new THREE.Vector3(50, 40, 50), target: new THREE.Vector3(0, 0, 0) },
     top: { pos: new THREE.Vector3(0, 100, 0), target: new THREE.Vector3(0, 0, 0) },
@@ -38,28 +40,164 @@ const viewPositions = {
 const keys = { w: false, a: false, s: false, d: false };
 const moveSpeed = 5;
 
-function loadHDRSkybox() {
-    return new Promise((resolve) => {
-        const loader = new RGBELoader();
-        loader.load('skybox.hdr', (texture) => {
-            texture.mapping = THREE.EquirectangularReflectionMapping;
-            scene.background = texture;
-            scene.environment = texture;
-            console.log('HDR 天空盒加载成功');
-            resolve(texture);
-        }, undefined, (error) => {
-            console.warn('HDR 天空盒加载失败，使用默认背景:', error);
-            scene.background = new THREE.Color(0x87ceeb);
-            resolve(null);
+let hdrTextures = { sunny: null, rainy: null, cloudy: null };
+let currentWeather = 'sunny';
+
+let rainSystem = null;
+let rainGeometry, rainMaterial;
+
+const weatherFiles = {
+    sunny: 'qingtian.hdr',
+    rainy: 'yutian.hdr',
+    cloudy: 'duoyun.hdr'
+};
+
+function createRain() {
+    const rainCount = 25000;
+    rainGeometry = new THREE.BufferGeometry();
+
+    const positions = new Float32Array(rainCount * 6);
+    const velocities = new Float32Array(rainCount);
+
+    for (let i = 0; i < rainCount; i++) {
+        const x = (Math.random() - 0.5) * 400;
+        const y = Math.random() * 200;
+        const z = (Math.random() - 0.5) * 400;
+
+        positions[i * 6] = x;
+        positions[i * 6 + 1] = y;
+        positions[i * 6 + 2] = z;
+
+        positions[i * 6 + 3] = x;
+        positions[i * 6 + 4] = y - 2.5;
+        positions[i * 6 + 5] = z;
+
+        velocities[i] = 3 + Math.random() * 4;
+    }
+
+    rainGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    rainGeometry.userData.velocities = velocities;
+
+    rainMaterial = new THREE.LineBasicMaterial({
+        color: 0xaabbdd,
+        transparent: true,
+        opacity: 0.15,
+        blending: THREE.AdditiveBlending
+    });
+
+    rainSystem = new THREE.LineSegments(rainGeometry, rainMaterial);
+    rainSystem.visible = false;
+    scene.add(rainSystem);
+}
+
+function updateRain() {
+    if (!rainSystem || !rainSystem.visible) return;
+
+    const positions = rainGeometry.attributes.position.array;
+    const velocities = rainGeometry.userData.velocities;
+
+    for (let i = 0; i < velocities.length; i++) {
+        positions[i * 6 + 1] -= velocities[i];
+        positions[i * 6 + 4] -= velocities[i];
+
+        if (positions[i * 6 + 1] < 0) {
+            const x = (Math.random() - 0.5) * 400;
+            const z = (Math.random() - 0.5) * 400;
+            positions[i * 6 + 1] = 200;
+            positions[i * 6 + 4] = 197.5;
+            positions[i * 6] = x;
+            positions[i * 6 + 2] = z;
+            positions[i * 6 + 3] = x;
+            positions[i * 6 + 5] = z;
+        }
+    }
+
+    rainGeometry.attributes.position.needsUpdate = true;
+}
+
+function loadAllSkyboxes() {
+    const promises = Object.entries(weatherFiles).map(([key, file]) => {
+        return new Promise((resolve) => {
+            const loader = new RGBELoader();
+            loader.load(file, (texture) => {
+                texture.mapping = THREE.EquirectangularReflectionMapping;
+                hdrTextures[key] = texture;
+                console.log(`${file} 加载成功`);
+                resolve();
+            }, undefined, (error) => {
+                console.warn(`${file} 加载失败:`, error);
+                resolve();
+            });
         });
     });
+    return Promise.allSettled(promises);
+}
+
+const weatherConfig = {
+    sunny: {
+        ambientIntensity: 0.7,
+        dirIntensity: 1.2,
+        dirColor: 0xfff5e6,
+        hemiIntensity: 0.4,
+        fogColor: 0x87ceeb,
+        fogNear: 100,
+        fogFar: 500,
+        rainVisible: false
+    },
+    rainy: {
+        ambientIntensity: 0.25,
+        dirIntensity: 0.25,
+        dirColor: 0x667788,
+        hemiIntensity: 0.08,
+        fogColor: 0x2a2a3a,
+        fogNear: 15,
+        fogFar: 120,
+        rainVisible: true
+    },
+    cloudy: {
+        ambientIntensity: 0.5,
+        dirIntensity: 0.6,
+        dirColor: 0xddeeff,
+        hemiIntensity: 0.25,
+        fogColor: 0x9a9aaa,
+        fogNear: 80,
+        fogFar: 350,
+        rainVisible: false
+    }
+};
+
+function setWeather(weather) {
+    currentWeather = weather;
+    const config = weatherConfig[weather];
+
+    ambientLight.intensity = config.ambientIntensity;
+    dirLight.intensity = config.dirIntensity;
+    dirLight.color.setHex(config.dirColor);
+    hemiLight.intensity = config.hemiIntensity;
+
+    scene.fog.color.setHex(config.fogColor);
+    scene.fog.near = config.fogNear;
+    scene.fog.far = config.fogFar;
+
+    if (hdrTextures[weather]) {
+        scene.background = hdrTextures[weather];
+        scene.environment = hdrTextures[weather];
+    }
+
+    if (rainSystem) {
+        rainSystem.visible = config.rainVisible;
+    }
+
+    document.querySelectorAll('[data-weather]').forEach(btn => btn.classList.remove('active'));
+    const activeBtn = document.getElementById(`${weather}Btn`);
+    if (activeBtn) activeBtn.classList.add('active');
 }
 
 function setupLighting() {
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
     dirLight.position.set(50, 80, 50);
     dirLight.castShadow = true;
     dirLight.shadow.mapSize.width = 2048;
@@ -72,7 +210,7 @@ function setupLighting() {
     dirLight.shadow.camera.bottom = -100;
     scene.add(dirLight);
 
-    const hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x3a7d44, 0.3);
+    hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x3a7d44, 0.3);
     scene.add(hemiLight);
 }
 
@@ -201,7 +339,7 @@ function switchView(viewName) {
     const view = viewPositions[viewName];
     if (!view) return;
 
-    document.querySelectorAll('.btn-group button').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
     document.getElementById(viewName === 'perspective' ? 'perspectiveBtn' : viewName === 'top' ? 'topViewBtn' : 'sideViewBtn').classList.add('active');
 
     animateCamera(view.pos, view.target);
@@ -256,8 +394,9 @@ function resetScene() {
     hideInfoPanel();
     autoRotate = false;
     orbitControls.autoRotate = false;
-    document.querySelectorAll('.btn-group button').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
     document.getElementById('perspectiveBtn').classList.add('active');
+    setWeather('sunny');
 }
 
 function toggleAutoRotate() {
@@ -324,6 +463,11 @@ function setupEventListeners() {
     document.getElementById('perspectiveBtn').addEventListener('click', () => switchView('perspective'));
     document.getElementById('topViewBtn').addEventListener('click', () => switchView('top'));
     document.getElementById('sideViewBtn').addEventListener('click', () => switchView('side'));
+
+    document.getElementById('sunnyBtn').addEventListener('click', () => setWeather('sunny'));
+    document.getElementById('rainyBtn').addEventListener('click', () => setWeather('rainy'));
+    document.getElementById('cloudyBtn').addEventListener('click', () => setWeather('cloudy'));
+
     document.getElementById('closeInfo').addEventListener('click', hideInfoPanel);
     document.getElementById('introBtn').addEventListener('click', () => {
         document.getElementById('introModal').classList.remove('hidden');
@@ -352,6 +496,7 @@ function animate() {
     const delta = Math.min(clock.getDelta(), 0.05);
 
     handleKeyboardMovement(delta);
+    updateRain();
     orbitControls.update();
 
     renderer.render(scene, camera);
@@ -360,8 +505,10 @@ function animate() {
 async function init() {
     setupLighting();
     setupEventListeners();
+    createRain();
 
-    await loadHDRSkybox();
+    await loadAllSkyboxes();
+    setWeather('sunny');
 
     try {
         await loadGLBModel();

@@ -111,6 +111,11 @@ body {
     border-color: rgba(156, 163, 175, 0.8);
 }
 
+.view-btn.active {
+    background: rgba(59, 130, 246, 0.6) !important;
+    border-color: rgba(59, 130, 246, 0.8) !important;
+}
+
 .panel-hint {
     margin-top: 14px;
     padding-top: 12px;

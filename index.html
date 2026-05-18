@@ -18,9 +18,18 @@
         <div class="panel-section">
             <label class="section-label">视角切换</label>
             <div class="btn-group">
-                <button id="perspectiveBtn" class="active">透视</button>
-                <button id="topViewBtn">鸟瞰</button>
-                <button id="sideViewBtn">侧面</button>
+                <button id="perspectiveBtn" class="view-btn active">透视</button>
+                <button id="topViewBtn" class="view-btn">鸟瞰</button>
+                <button id="sideViewBtn" class="view-btn">侧面</button>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <label class="section-label">天气切换</label>
+            <div class="btn-group">
+                <button id="sunnyBtn" class="active" data-weather="sunny">☀️ 晴天</button>
+                <button id="rainyBtn" data-weather="rainy">🌧️ 雨天</button>
+                <button id="cloudyBtn" data-weather="cloudy">☁️ 多云</button>
             </div>
         </div>
 
